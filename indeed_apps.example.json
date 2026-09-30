@@ -1,0 +1,57 @@
+{
+  "_schema": "indeed_apps.v3",
+  "_descripcion": "EJEMPLO con datos inventados. Copia este fichero a indeed_apps.json si quieres arrancar con datos de prueba. El fichero indeed_apps.json real esta en .gitignore.",
+  "meta": {
+    "usuario": "usuario",
+    "plataforma": "indeed",
+    "cuenta_url_aplicados": "https://myjobs.indeed.com/applied",
+    "ultima_lectura": "2026-01-01T00:00:00",
+    "total_aplicados": 3,
+    "desglose_estado": {
+      "Enviada": 2,
+      "Vista": 1
+    },
+    "nota": "Datos ficticios de ejemplo."
+  },
+  "solicitudes": [
+    {
+      "id": 1,
+      "jk": "aaaaaaaaaaaaaaaa",
+      "puesto": "Tecnico de Sistemas",
+      "empresa": "ACME S.L.",
+      "ubicacion": "Barcelona, Barcelona provincia",
+      "url": "https://es.indeed.com/viewjob?jk=aaaaaaaaaaaaaaaa",
+      "estado": "Enviada",
+      "fecha": "2026-01-01",
+      "plataforma": "indeed",
+      "idioma_oferta": "es",
+      "modalidad": null
+    },
+    {
+      "id": 2,
+      "jk": "bbbbbbbbbbbbbbbb",
+      "puesto": "IT Support Specialist",
+      "empresa": "Globex Corp",
+      "ubicacion": "Madrid, Madrid provincia",
+      "url": "https://es.indeed.com/viewjob?jk=bbbbbbbbbbbbbbbb",
+      "estado": "Vista",
+      "fecha": "2026-01-02",
+      "plataforma": "indeed",
+      "idioma_oferta": "en",
+      "modalidad": "Remoto"
+    },
+    {
+      "id": 3,
+      "jk": "cccccccccccccccc",
+      "puesto": "Administrador de Sistemas Linux",
+      "empresa": "Initech",
+      "ubicacion": "Valencia, Valencia provincia",
+      "url": "https://es.indeed.com/viewjob?jk=cccccccccccccccc",
+      "estado": "Enviada",
+      "fecha": "2026-01-03",
+      "plataforma": "indeed",
+      "idioma_oferta": "es",
+      "modalidad": null
+    }
+  ]
+}

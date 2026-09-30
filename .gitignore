@@ -1,0 +1,23 @@
+# Datos personales (tu historial real de solicitudes) — NO subir
+indeed_apps.json
+*_apps.json
+
+# Basura de Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# Logs y temporales del servidor
+server.log
+*.log
+*.tmp
+
+# Entorno / editores
+.venv/
+venv/
+.env
+.DS_Store
+.idea/
+.vscode/

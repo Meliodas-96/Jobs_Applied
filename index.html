@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jobs-Applied · Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        ink:    { 950:'#060911', 900:'#0a0f1e', 850:'#0e1428', 800:'#131a33', 700:'#1c2547' },
+        aurora: { cyan:'#22d3ee', teal:'#2dd4bf', violet:'#a78bfa', pink:'#f472b6', amber:'#fbbf24', emerald:'#34d399', rose:'#fb7185' }
+      },
+      fontFamily: {
+        sans: ['Inter','ui-sans-serif','system-ui','-apple-system','Segoe UI','Roboto','sans-serif'],
+        mono: ['ui-monospace','SFMono-Regular','Menlo','monospace']
+      },
+      boxShadow: {
+        glow:  '0 0 0 1px rgba(255,255,255,.06), 0 18px 40px -22px rgba(34,211,238,.35)',
+        card:  '0 1px 0 0 rgba(255,255,255,.04) inset, 0 20px 40px -30px rgba(0,0,0,.9)'
+      }
+    }
+  }
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  html { color-scheme: dark; }
+  body {
+    background-color: #060911;
+    background-image:
+      radial-gradient(900px 500px at 12% -8%, rgba(34,211,238,.13), transparent 60%),
+      radial-gradient(800px 480px at 88% 0%, rgba(167,139,250,.13), transparent 62%),
+      radial-gradient(700px 420px at 50% 110%, rgba(52,211,153,.08), transparent 60%);
+    background-attachment: fixed;
+  }
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018));
+    border: 1px solid rgba(255,255,255,.08);
+    backdrop-filter: blur(10px);
+    border-radius: 1rem;
+  }
+  .card:hover { border-color: rgba(255,255,255,.14); }
+  .kpi-num { font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 99px; border: 3px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); background-clip: content-box; }
+  .fade-in { animation: fade .35s ease both; }
+  @keyframes fade { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
+  .spin { animation: sp 1s linear infinite; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  input[type="text"]:focus, select:focus { outline: none; border-color: rgba(34,211,238,.55); box-shadow: 0 0 0 3px rgba(34,211,238,.12); }
+  .row-hover:hover { background: rgba(255,255,255,.035); }
+</style>
+</head>
+<body class="min-h-screen text-slate-200 font-sans antialiased">
+
+<header class="sticky top-0 z-30 border-b border-white/8 bg-ink-950/70 backdrop-blur-xl">
+  <div class="mx-auto max-w-[1600px] px-5 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-3">
+    <div class="flex items-center gap-3">
+      <div class="h-9 w-9 rounded-xl grid place-items-center bg-gradient-to-br from-aurora-cyan/25 to-aurora-violet/25 border border-white/10">
+        <svg viewBox="0 0 24 24" class="h-5 w-5 text-aurora-cyan" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 7h16M4 12h16M4 17h10"/><circle cx="19" cy="17" r="2.2"/>
+        </svg>
+      </div>
+      <div class="leading-tight">
+        <h1 class="text-[15px] font-semibold tracking-tight text-white">Jobs-Applied</h1>
+        <p class="text-[11px] text-slate-500 font-mono" id="folderPath">cargando…</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 ml-auto">
+      <span id="statusPill" class="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-400">
+        <span class="h-1.5 w-1.5 rounded-full bg-aurora-emerald"></span>
+        <span id="statusText">listo</span>
+      </span>
+      <button id="btnReload" class="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/10 hover:border-white/20 transition">
+        <svg id="reloadIcon" viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>
+        </svg>
+        Recargar
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="mx-auto max-w-[1600px] px-5 py-6 space-y-6">
+
+  <!-- KPIs -->
+  <section id="kpis" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3.5"></section>
+
+  <!-- Graficos -->
+  <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="card p-5 lg:col-span-1">
+      <div class="flex items-baseline justify-between mb-3">
+        <h2 class="text-sm font-semibold text-white">Por plataforma</h2>
+        <span class="text-[11px] text-slate-500">registros</span>
+      </div>
+      <div class="h-[240px] relative"><canvas id="chPlat"></canvas></div>
+    </div>
+    <div class="card p-5 lg:col-span-1">
+      <div class="flex items-baseline justify-between mb-3">
+        <h2 class="text-sm font-semibold text-white">Por estado</h2>
+        <span class="text-[11px] text-slate-500">registros</span>
+      </div>
+      <div class="h-[240px] relative"><canvas id="chEstado"></canvas></div>
+    </div>
+    <div class="card p-5 lg:col-span-1">
+      <div class="flex items-baseline justify-between mb-3">
+        <h2 class="text-sm font-semibold text-white">Top empresas</h2>
+        <span class="text-[11px] text-slate-500">top 10</span>
+      </div>
+      <div class="h-[240px] relative"><canvas id="chEmp"></canvas></div>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="card p-5 lg:col-span-2">
+      <div class="flex items-baseline justify-between mb-3">
+        <h2 class="text-sm font-semibold text-white">Actividad por fecha</h2>
+        <span class="text-[11px] text-slate-500">solicitudes con fecha reconocida</span>
+      </div>
+      <div class="h-[260px] relative"><canvas id="chTime"></canvas></div>
+    </div>
+    <div class="card p-5">
+      <div class="flex items-baseline justify-between mb-3">
+        <h2 class="text-sm font-semibold text-white">Ficheros detectados</h2>
+        <span class="text-[11px] text-slate-500" id="filesCount">0</span>
+      </div>
+      <div id="filesList" class="space-y-2 max-h-[260px] overflow-y-auto pr-1"></div>
+    </div>
+  </section>
+
+  <!-- Tabla -->
+  <section class="card overflow-hidden">
+    <div class="p-5 border-b border-white/8 flex flex-wrap items-center gap-3">
+      <h2 class="text-sm font-semibold text-white mr-1">Registros</h2>
+      <span id="tableCount" class="rounded-md bg-white/5 border border-white/10 px-2 py-0.5 text-[11px] font-mono text-slate-400">0</span>
+
+      <div class="flex flex-wrap items-center gap-2 ml-auto">
+        <div class="relative">
+          <svg viewBox="0 0 24 24" class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+          </svg>
+          <input id="q" type="text" placeholder="Buscar puesto, empresa, ubicación…"
+                 class="w-[260px] rounded-lg border border-white/10 bg-ink-900/70 pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder:text-slate-600 transition">
+        </div>
+        <select id="fPlat" class="rounded-lg border border-white/10 bg-ink-900/70 px-2.5 py-1.5 text-xs text-slate-200 transition"></select>
+        <select id="fEstado" class="rounded-lg border border-white/10 bg-ink-900/70 px-2.5 py-1.5 text-xs text-slate-200 transition"></select>
+        <select id="fModal" class="rounded-lg border border-white/10 bg-ink-900/70 px-2.5 py-1.5 text-xs text-slate-200 transition"></select>
+        <select id="fOrden" class="rounded-lg border border-white/10 bg-ink-900/70 px-2.5 py-1.5 text-xs text-slate-200 transition">
+          <option value="fecha-desc">Fecha ↓</option>
+          <option value="fecha-asc">Fecha ↑</option>
+          <option value="empresa-asc">Empresa A-Z</option>
+          <option value="puesto-asc">Puesto A-Z</option>
+        </select>
+        <button id="btnClear" class="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-white/10 transition">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-[13px]">
+        <thead class="bg-white/[.03] text-[11px] uppercase tracking-wider text-slate-500">
+          <tr>
+            <th class="px-4 py-2.5 font-medium">#</th>
+            <th class="px-4 py-2.5 font-medium">Puesto</th>
+            <th class="px-4 py-2.5 font-medium">Empresa</th>
+            <th class="px-4 py-2.5 font-medium">Ubicación</th>
+            <th class="px-4 py-2.5 font-medium">Estado</th>
+            <th class="px-4 py-2.5 font-medium">Plataforma</th>
+            <th class="px-4 py-2.5 font-medium">Modalidad</th>
+            <th class="px-4 py-2.5 font-medium">Fecha</th>
+            <th class="px-4 py-2.5 font-medium">Salario</th>
+            <th class="px-4 py-2.5 font-medium text-right">Oferta</th>
+          </tr>
+        </thead>
+        <tbody id="tbody" class="divide-y divide-white/[.05]"></tbody>
+      </table>
+      <div id="emptyState" class="hidden py-16 text-center">
+        <p class="text-sm text-slate-500">No hay registros que coincidan con el filtro.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="pb-8 pt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-600 font-mono">
+    <span id="lastUpdate">—</span>
+    <span>auto-refresh 4h · o pulsa Recargar</span>
+    <span>Suelta nuevos JSONs en la carpeta y aparecen solos</span>
+  </footer>
+</main>
+
+<script>
+const COLORS = {
+  cyan:'#22d3ee', teal:'#2dd4bf', violet:'#a78bfa', pink:'#f472b6',
+  amber:'#fbbf24', emerald:'#34d399', rose:'#fb7185', slate:'#64748b'
+};
+const PALETTE = [COLORS.cyan, COLORS.violet, COLORS.emerald, COLORS.amber, COLORS.pink, COLORS.teal, COLORS.rose, '#60a5fa', '#facc15', '#c084fc'];
+
+const ESTADO_STYLE = {
+  'Enviada':    { bg:'rgba(52,211,153,.12)',  bd:'rgba(52,211,153,.35)',  fg:'#6ee7b7', dot:'#34d399' },
+  'Vista':      { bg:'rgba(34,211,238,.12)',  bd:'rgba(34,211,238,.35)',  fg:'#67e8f9', dot:'#22d3ee' },
+  'Entrevista': { bg:'rgba(167,139,250,.12)', bd:'rgba(167,139,250,.35)', fg:'#c4b5fd', dot:'#a78bfa' },
+  'Rechazada':  { bg:'rgba(251,113,133,.12)', bd:'rgba(251,113,133,.35)', fg:'#fda4af', dot:'#fb7185' },
+  'Bloqueada':  { bg:'rgba(251,191,36,.12)',  bd:'rgba(251,191,36,.35)',  fg:'#fcd34d', dot:'#fbbf24' },
+  'Dudosa':     { bg:'rgba(148,163,184,.12)', bd:'rgba(148,163,184,.3)',  fg:'#cbd5e1', dot:'#94a3b8' }
+};
+const DEFAULT_STYLE = { bg:'rgba(148,163,184,.1)', bd:'rgba(148,163,184,.25)', fg:'#cbd5e1', dot:'#94a3b8' };
+
+let DATA = null;
+let CHARTS = {};
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => (s == null ? '' : String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])));
+const fmtNum = (n) => new Intl.NumberFormat('es-ES').format(n);
+
+function setStatus(txt, kind) {
+  $('statusText').textContent = txt;
+  const dot = $('statusPill').querySelector('span');
+  dot.className = 'h-1.5 w-1.5 rounded-full ' + (kind === 'err' ? 'bg-aurora-rose' : kind === 'busy' ? 'bg-aurora-amber' : 'bg-aurora-emerald');
+}
+
+async function refreshIndeed() {
+  setStatus('leyendo plataformas…', 'busy');
+  $('reloadIcon').classList.add('spin');
+  try {
+    const r = await fetch('/api/refresh', { method: 'POST', cache: 'no-store' });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.ok === false) {
+      const det = Object.entries(j.plataformas || {})
+        .map(([k, v]) => k + ': ' + (v.error || '?'))
+        .join('; ');
+      throw new Error(det || j.error || ('HTTP ' + r.status));
+    }
+    await loadData(true);
+    const plats = (j.actualizadas || []).join(', ');
+    setStatus(plats ? (j.n + ' solicitudes · ' + plats) : 'sin cambios', 'ok');
+  } catch (e) {
+    setStatus('no pude leer: ' + e.message, 'err');
+    console.error(e);
+    // aunque falle alguna plataforma, releo los ficheros locales
+    await loadData(false);
+  } finally {
+    $('reloadIcon').classList.remove('spin');
+  }
+}
+
+async function loadData(manual) {
+  setStatus('cargando…', 'busy');
+  $('reloadIcon').classList.add('spin');
+  try {
+    const r = await fetch('/api/data', { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (j.error) throw new Error(j.error);
+    // 'generado' cambia en cada peticion: comparo solo los datos reales
+    // para no redibujar graficas y tabla cada 20s sin motivo (parpadeo)
+    const firma = (d) => JSON.stringify(d.archivos) + JSON.stringify(d.records);
+    const cambiado = !DATA || firma(j) !== firma(DATA);
+    DATA = j;
+    $('lastUpdate').textContent = 'actualizado ' + (DATA.generado || '').replace('T', ' ');
+    if (cambiado || manual) render();
+    setStatus('actualizado', 'ok');
+  } catch (e) {
+    setStatus('error: ' + e.message, 'err');
+    console.error(e);
+  } finally {
+    $('reloadIcon').classList.remove('spin');
+  }
+}
+
+/* ---------- agregaciones ---------- */
+function countBy(rows, fn) {
+  const m = new Map();
+  for (const r of rows) {
+    const k = fn(r);
+    if (k == null || k === '') continue;
+    m.set(k, (m.get(k) || 0) + 1);
+  }
+  return [...m.entries()].sort((a, b) => b[1] - a[1]);
+}
+
+function renderKPIs(rows) {
+  const total = rows.length;
+  const empresas = new Set(rows.map(r => (r.empresa || '').trim()).filter(Boolean)).size;
+  const plats = new Set(rows.map(r => r.plataforma).filter(Boolean)).size;
+  const enviadas = rows.filter(r => r.estado === 'Enviada').length;
+  const activas = rows.filter(r => r.estado === 'Vista' || r.estado === 'Entrevista').length;
+  const negativas = rows.filter(r => r.estado === 'Rechazada' || r.estado === 'Bloqueada').length;
+
+  const items = [
+    { label: 'Registros',   value: total,     hint: 'total en carpeta',        color: COLORS.cyan },
+    { label: 'Plataformas', value: plats,     hint: 'portales detectados',     color: COLORS.violet },
+    { label: 'Empresas',    value: empresas,  hint: 'únicas',                  color: COLORS.teal },
+    { label: 'Enviadas',    value: enviadas,  hint: 'confirmadas',             color: COLORS.emerald },
+    { label: 'En juego',    value: activas,   hint: 'vistas + entrevistas',    color: COLORS.amber },
+    { label: 'Descartadas', value: negativas, hint: 'rechazos + bloqueos',     color: COLORS.rose }
+  ];
+
+  $('kpis').innerHTML = items.map(it => `
+    <div class="card p-4 relative overflow-hidden">
+      <div class="absolute -right-6 -top-6 h-20 w-20 rounded-full opacity-[.18] blur-2xl" style="background:${it.color}"></div>
+      <p class="text-[11px] uppercase tracking-wider text-slate-500">${it.label}</p>
+      <p class="kpi-num mt-1 text-2xl font-semibold text-white">${fmtNum(it.value)}</p>
+      <p class="mt-0.5 text-[11px] text-slate-600">${it.hint}</p>
+    </div>`).join('');
+}
+
+function destroyCharts() {
+  Object.values(CHARTS).forEach(c => { try { c.destroy(); } catch (e) {} });
+  CHARTS = {};
+}
+
+const chartBase = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: 'circle' } },
+    tooltip: {
+      backgroundColor: 'rgba(6,9,17,.95)', borderColor: 'rgba(255,255,255,.12)', borderWidth: 1,
+      titleColor: '#e2e8f0', bodyColor: '#cbd5e1', padding: 10, cornerRadius: 8, displayColors: true, boxPadding: 4
+    }
+  },
+  scales: {
+    x: { ticks: { color: '#64748b', font: { size: 10.5 } }, grid: { color: 'rgba(255,255,255,.05)' }, border: { color: 'rgba(255,255,255,.08)' } },
+    y: { ticks: { color: '#64748b', font: { size: 10.5 }, precision: 0 }, grid: { color: 'rgba(255,255,255,.05)' }, border: { color: 'rgba(255,255,255,.08)' }, beginAtZero: true }
+  }
+};
+
+function renderCharts(rows) {
+  destroyCharts();
+
+  const plat = countBy(rows, r => r.plataforma);
+  CHARTS.plat = new Chart($('chPlat'), {
+    type: 'doughnut',
+    data: {
+      labels: plat.map(x => x[0]),
+      datasets: [{ data: plat.map(x => x[1]), backgroundColor: plat.map((_, i) => PALETTE[i % PALETTE.length]), borderColor: 'rgba(6,9,17,.9)', borderWidth: 3, hoverOffset: 6 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: { ...chartBase.plugins, legend: { position: 'bottom', labels: chartBase.plugins.legend.labels } }
+    }
+  });
+
+  const est = countBy(rows, r => r.estado);
+  CHARTS.estado = new Chart($('chEstado'), {
+    type: 'bar',
+    data: {
+      labels: est.map(x => x[0]),
+      datasets: [{ data: est.map(x => x[1]), backgroundColor: est.map(x => (ESTADO_STYLE[x[0]] || DEFAULT_STYLE).dot + 'cc'), borderColor: est.map(x => (ESTADO_STYLE[x[0]] || DEFAULT_STYLE).dot), borderWidth: 1, borderRadius: 6, maxBarThickness: 46 }]
+    },
+    options: { ...chartBase, plugins: { ...chartBase.plugins, legend: { display: false } } }
+  });
+
+  const emp = countBy(rows, r => (r.empresa || '').trim()).slice(0, 10).reverse();
+  CHARTS.emp = new Chart($('chEmp'), {
+    type: 'bar',
+    data: {
+      labels: emp.map(x => x[0].length > 22 ? x[0].slice(0, 21) + '…' : x[0]),
+      datasets: [{ data: emp.map(x => x[1]), backgroundColor: 'rgba(167,139,250,.55)', borderColor: COLORS.violet, borderWidth: 1, borderRadius: 5, maxBarThickness: 16 }]
+    },
+    options: {
+      ...chartBase, indexAxis: 'y',
+      plugins: { ...chartBase.plugins, legend: { display: false } },
+      scales: {
+        x: { ...chartBase.scales.x, beginAtZero: true, ticks: { ...chartBase.scales.x.ticks, precision: 0 } },
+        y: { ...chartBase.scales.y, grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10.5 } } }
+      }
+    }
+  });
+
+  const porFecha = countBy(rows.filter(r => r.fecha), r => r.fecha).sort((a, b) => a[0].localeCompare(b[0]));
+  const sinFecha = rows.filter(r => !r.fecha).length;
+  CHARTS.time = new Chart($('chTime'), {
+    type: 'line',
+    data: {
+      labels: porFecha.map(x => x[0]),
+      datasets: [{
+        label: 'solicitudes', data: porFecha.map(x => x[1]),
+        borderColor: COLORS.cyan, borderWidth: 2,
+        backgroundColor: (ctx) => {
+          const { chart } = ctx; const { ctx: c, chartArea } = chart;
+          if (!chartArea) return 'rgba(34,211,238,.15)';
+          const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+          g.addColorStop(0, 'rgba(34,211,238,.35)'); g.addColorStop(1, 'rgba(34,211,238,0)');
+          return g;
+        },
+        fill: true, tension: .35, pointRadius: 3, pointHoverRadius: 5,
+        pointBackgroundColor: COLORS.cyan, pointBorderColor: 'rgba(6,9,17,.9)', pointBorderWidth: 2
+      }]
+    },
+    options: {
+      ...chartBase,
+      plugins: {
+        ...chartBase.plugins,
+        legend: { display: false },
+        tooltip: { ...chartBase.plugins.tooltip, callbacks: { afterBody: () => sinFecha ? [sinFecha + ' sin fecha reconocida'] : [] } }
+      },
+      scales: { ...chartBase.scales, y: { ...chartBase.scales.y, ticks: { ...chartBase.scales.y.ticks, precision: 0 } } }
+    }
+  });
+}
+
+function renderFiles() {
+  const files = DATA.archivos || [];
+  $('filesCount').textContent = files.length + (files.length === 1 ? ' fichero' : ' ficheros');
+  if (!files.length) {
+    $('filesList').innerHTML = '<p class="text-xs text-slate-600 py-6 text-center">No hay JSONs en la carpeta.</p>';
+    return;
+  }
+  $('filesList').innerHTML = files.map(f => {
+    const err = f.error ? `<p class="text-[10.5px] text-aurora-rose mt-1">${esc(f.error)}</p>` : '';
+    return `
+      <div class="rounded-lg border border-white/8 bg-white/[.03] px-3 py-2.5">
+        <div class="flex items-center gap-2">
+          <span class="h-1.5 w-1.5 rounded-full ${f.error ? 'bg-aurora-rose' : 'bg-aurora-emerald'}"></span>
+          <span class="text-xs font-medium text-slate-200 truncate">${esc(f.nombre)}</span>
+          <span class="ml-auto rounded bg-white/5 border border-white/10 px-1.5 py-0.5 text-[10px] font-mono text-slate-400">${fmtNum(f.registros)}</span>
+        </div>
+        <div class="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[10.5px] text-slate-500 font-mono">
+          <span class="text-aurora-cyan/80">${esc(f.plataforma)}</span>
+          ${f.schema ? `<span>${esc(f.schema)}</span>` : ''}
+          <span>${(f.bytes/1024).toFixed(1)} KB</span>
+          <span>${esc((f.mtime || '').replace('T',' '))}</span>
+        </div>
+        ${err}
+      </div>`;
+  }).join('');
+}
+
+/* ---------- filtros + tabla ---------- */
+function fillSelects(rows) {
+  const mk = (el, vals, allLabel) => {
+    const cur = el.value;
+    el.innerHTML = `<option value="">${allLabel}</option>` +
+      vals.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    if ([...el.options].some(o => o.value === cur)) el.value = cur;
+  };
+  mk($('fPlat'), countBy(rows, r => r.plataforma).map(x => x[0]), 'Toda plataforma');
+  mk($('fEstado'), countBy(rows, r => r.estado).map(x => x[0]), 'Todo estado');
+  mk($('fModal'), countBy(rows, r => r.modalidad).map(x => x[0]), 'Toda modalidad');
+}
+
+function applyFilters(rows) {
+  const q = $('q').value.trim().toLowerCase();
+  const fp = $('fPlat').value, fe = $('fEstado').value, fm = $('fModal').value, ord = $('fOrden').value;
+
+  let out = rows.filter(r => {
+    if (fp && r.plataforma !== fp) return false;
+    if (fe && r.estado !== fe) return false;
+    if (fm && r.modalidad !== fm) return false;
+    if (q) {
+      const hay = [r.puesto, r.empresa, r.ubicacion, r.jk, r.notas, r.salario, r.idioma]
+        .filter(Boolean).join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const cmpFecha = (a, b) => (a.fecha || '0000-00-00').localeCompare(b.fecha || '0000-00-00');
+  const s = (v) => (v || '').toString().toLowerCase();
+  if (ord === 'fecha-desc') out.sort((a, b) => cmpFecha(b, a));
+  else if (ord === 'fecha-asc') out.sort(cmpFecha);
+  else if (ord === 'empresa-asc') out.sort((a, b) => s(a.empresa).localeCompare(s(b.empresa)));
+  else if (ord === 'puesto-asc') out.sort((a, b) => s(a.puesto).localeCompare(s(b.puesto)));
+
+  return out;
+}
+
+function badgeEstado(e) {
+  const st = ESTADO_STYLE[e] || DEFAULT_STYLE;
+  return `<span class="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] whitespace-nowrap"
+    style="background:${st.bg};border-color:${st.bd};color:${st.fg}">
+    <span class="h-1.5 w-1.5 rounded-full" style="background:${st.dot}"></span>${esc(e)}</span>`;
+}
+
+function renderTable() {
+  const rows = applyFilters(DATA.records || []);
+  $('tableCount').textContent = fmtNum(rows.length);
+  const tb = $('tbody');
+  const empty = $('emptyState');
+
+  if (!rows.length) {
+    tb.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  tb.innerHTML = rows.map((r, i) => {
+    const url = r.url
+      ? `<a href="${esc(r.url)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-aurora-cyan hover:text-aurora-teal transition" title="${esc(r.url)}">
+           abrir <svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+         </a>`
+      : '<span class="text-slate-700">—</span>';
+
+    const fecha = r.fecha
+      ? `<span class="font-mono text-[12px] text-slate-300">${esc(r.fecha)}</span>`
+      : `<span class="text-[11px] text-slate-600" title="${esc(r.fecha_raw || '')}">${r.fecha_raw ? esc(r.fecha_raw) : '—'}</span>`;
+
+    return `
+      <tr class="row-hover fade-in">
+        <td class="px-4 py-2.5 font-mono text-[11px] text-slate-600">${esc(r.id != null ? r.id : i + 1)}</td>
+        <td class="px-4 py-2.5 text-slate-100 max-w-[340px]"><span class="line-clamp-2">${esc(r.puesto || '—')}</span></td>
+        <td class="px-4 py-2.5 text-slate-300 max-w-[200px] truncate" title="${esc(r.empresa || '')}">${esc(r.empresa || '—')}</td>
+        <td class="px-4 py-2.5 text-slate-400 text-[12px] max-w-[190px] truncate" title="${esc(r.ubicacion || '')}">${esc(r.ubicacion || '—')}</td>
+        <td class="px-4 py-2.5">${badgeEstado(r.estado)}</td>
+        <td class="px-4 py-2.5"><span class="rounded-md bg-white/5 border border-white/10 px-1.5 py-0.5 text-[10.5px] font-mono text-slate-400">${esc(r.plataforma || '—')}</span></td>
+        <td class="px-4 py-2.5 text-[12px] text-slate-400">${esc(r.modalidad || '—')}</td>
+        <td class="px-4 py-2.5 whitespace-nowrap">${fecha}</td>
+        <td class="px-4 py-2.5 text-[12px] text-slate-400 max-w-[150px] truncate" title="${esc(r.salario || '')}">${esc(r.salario || '—')}</td>
+        <td class="px-4 py-2.5 text-right whitespace-nowrap">${url}</td>
+      </tr>`;
+  }).join('');
+}
+
+function render() {
+  const rows = DATA.records || [];
+  $('folderPath').textContent = DATA.carpeta || '';
+  $('lastUpdate').textContent = 'actualizado ' + (DATA.generado || '').replace('T', ' ');
+  renderKPIs(rows);
+  renderCharts(rows);
+  renderFiles();
+  fillSelects(rows);
+  renderTable();
+}
+
+/* ---------- wiring ---------- */
+['q', 'fPlat', 'fEstado', 'fModal', 'fOrden'].forEach(id => {
+  const el = $(id);
+  el.addEventListener(id === 'q' ? 'input' : 'change', () => { if (DATA) renderTable(); });
+});
+$('btnClear').addEventListener('click', () => {
+  $('q').value = ''; $('fPlat').value = ''; $('fEstado').value = ''; $('fModal').value = ''; $('fOrden').value = 'fecha-desc';
+  if (DATA) renderTable();
+});
+$('btnReload').addEventListener('click', () => refreshIndeed());
+
+loadData(false);
+// Reescaneo automatico cada 4 horas. El panel NO consulta Indeed: solo relee
+// los JSON de la carpeta. Si sueltas un JSON nuevo, pulsa "Recargar" para
+// verlo al momento en lugar de esperar al siguiente ciclo.
+setInterval(() => loadData(false), 4 * 60 * 60 * 1000);
+</script>
+</body>
+</html>
